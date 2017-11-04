@@ -8,8 +8,8 @@ const merge                = require('webpack-merge');
 const JavaScriptObfuscator = require('webpack-obfuscator');
 const ExtractTextPlugin    = require('extract-text-webpack-plugin');
 const OfflinePlugin        = require('offline-plugin');
+const WebpackChunkHash     = require('webpack-chunk-hash');
 const baseConfig           = require('./base');
-const reactToolboxVars     = require('./config/reactToolboxVars.json');
 const packageJson          = require('../package.json');
 
 const publicPath = '/';
@@ -24,7 +24,7 @@ const config = merge(baseConfig, {
     publicPath,
     path: path.join(__dirname, `${root}/www`),
     filename: 'bundle.[name].[chunkhash].js',
-    chunkFilename: '[name]-chunk.js',
+    chunkFilename: 'bundle.[name].[chunkhash].js',
     pathinfo: false
   },
 
@@ -50,16 +50,7 @@ const config = merge(baseConfig, {
               options: {
                 minimize: true,
                 quiet: true,
-                plugins: () => [
-                  require('postcss-cssnext')({
-                    features: {
-                      customProperties: {
-                        variables: reactToolboxVars,
-                      },
-                    },
-                  }),
-                  require('precss')
-                ]
+                plugins: require('./config/postcssPlugins')
               }
             }
           ]
@@ -74,6 +65,11 @@ const config = merge(baseConfig, {
   },
 
   plugins: [
+    ...require('./config/chunks'),
+
+    new webpack.HashedModuleIdsPlugin(),
+    new WebpackChunkHash(),
+
     new OfflinePlugin({
       externals: ['/'],
       publicPath,
@@ -88,20 +84,12 @@ const config = merge(baseConfig, {
       }
     }),
 
-    new ExtractTextPlugin({
-      filename: 'styles.[name].[chunkhash].css',
-      allChunks: true
-    }),
-
     // NODE_ENV should be production so that modules do not perform certain development checks
     new webpack.DefinePlugin({
-      'process.env.ENV'               : JSON.stringify('web'),
-      'process.env.NODE_ENV'          : JSON.stringify('production'),
-      'process.env.ALLOWED_ENDPOINTS' : JSON.stringify(['app.projectpedigree.com', 'localhost:5001']),
-      'process.env.SERVER_HOST'       : JSON.stringify('app.projectpedigree.com'),
-      'process.env.SERVER_URL'        : JSON.stringify('https://app.projectpedigree.com/server'),
-      'process.env.BABEL_ENV'         : JSON.stringify('production'),
-      'process.env.VERSION'           : JSON.stringify(packageJson.version)
+      'process.env.ENV'       : JSON.stringify('web'),
+      'process.env.NODE_ENV'  : JSON.stringify('production'),
+      'process.env.BABEL_ENV' : JSON.stringify('production'),
+      'process.env.VERSION'   : JSON.stringify(packageJson.version)
     }),
 
     // Minify without warning messages and IE8 support
@@ -113,26 +101,6 @@ const config = merge(baseConfig, {
       comments: false,
       sourceMap: false,
       exclude: ['bundle.app.*.js', 'bundle.manifest.*.js']
-    }),
-
-    //catch all - anything used in more than one place
-    new webpack.optimize.CommonsChunkPlugin({
-      async: 'common',
-      minChunks(module, count) {
-        return count >= 2;
-      },
-    }),
-
-    new webpack.optimize.CommonsChunkPlugin({
-      name: 'vendor',
-      minChunks(module) {
-        const context = module.context;
-        return context && context.match(/node_modules/);
-      },
-    }),
-
-    new webpack.optimize.CommonsChunkPlugin({
-      name: 'manifest'
     }),
 
     new JavaScriptObfuscator({
@@ -149,11 +117,7 @@ const config = merge(baseConfig, {
       stringArrayEncoding: false,
       stringArrayThreshold: 0.75,
       unicodeEscapeSequence: false,
-      sourceMap: false,
-      domainLock: [
-        'app.projectpedigree.com',
-        'localhost:5000'
-      ]
+      sourceMap: false
     }, ['bundle.vendor.**.js', 'bundle.manifest.**.js'])
   ]
 });

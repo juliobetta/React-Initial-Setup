@@ -58,8 +58,9 @@ module.exports = {
     }),
 
     new HtmlWebpackPlugin({
+      title: 'React Initial Setup',
       filename: 'index.html',
-      template: '../index.html',
+      template: `${root}/index.html`,
       chunksSortMode: function (chunk1, chunk2) {
         var orders = ['manifest', 'vendor', 'common', 'app'];
         var order1 = orders.indexOf(chunk1.names[0]);

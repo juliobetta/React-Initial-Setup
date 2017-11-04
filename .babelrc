@@ -15,6 +15,14 @@
     },
     "development": {
       "presets": ["react-hmre"]
+    },
+    "test": {
+      "plugins": [
+        [
+          "webpack-loaders",
+          { "config": "webpack/test.js", "verbose": true }
+        ]
+      ]
     }
   }
 }
